@@ -7,7 +7,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True) # Nested serializer to get full category details
+    category = CategorySerializer(read_only=True) 
 
     class Meta:
         model = Product
