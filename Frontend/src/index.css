@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #0b57d0;
+  --color-brand-bg: #f8fafd;
+  --color-brand-success-bg: #e6f4ea;
+  --color-brand-success-text: #137333;
+  --color-brand-coupon-bg: #e8f0fe;
+  --color-brand-coupon-text: #1967d2;
+  --color-brand-vip-bg: #e8eaf6;
+  --color-brand-vip-text: #3f51b5;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-bg text-[#1f1f1f] font-sans antialiased p-6;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6;
+  }
+  
+  .input-group {
+    @apply flex flex-col gap-2 mb-4;
+  }
+  
+  .input-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+  
+  .input-field {
+    @apply px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary text-sm;
+  }
+  
+  .btn-primary {
+    @apply bg-brand-primary text-white font-medium px-4 py-2 rounded hover:opacity-90 transition-opacity flex items-center justify-center gap-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded hover:bg-gray-200 transition-colors;
+  }
+  
+  .table-header {
+    @apply bg-gray-50 text-left text-sm font-semibold text-gray-600;
+  }
+  
+  .table-cell {
+    @apply py-3 px-4 border-b border-gray-100 text-sm text-gray-800;
+  }
+}
