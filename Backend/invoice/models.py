@@ -1,6 +1,13 @@
 
 from django.db import models
-class Promotion(models.db.models.Model):
+
+CUSTOMER_TYPES = (
+    ('REGULAR', 'Regular'),
+    ('PREMIUM', 'Premium'),
+    ('VIP', 'VIP'),
+)
+
+class Promotion(models.Model):
     DISCOUNT_TYPES = (
         ('PERCENTAGE', 'Percentage'),
         ('FIXED', 'Fixed'),
@@ -30,7 +37,7 @@ class Promotion(models.db.models.Model):
     def __str__(self):
         return self.name
 
-class Coupon(models.db.models.Model):
+class Coupon(models.Model):
     DISCOUNT_TYPES = (
         ('PERCENTAGE', 'Percentage'),
         ('FIXED', 'Fixed'),
@@ -61,13 +68,7 @@ class Coupon(models.db.models.Model):
     def __str__(self):
         return self.code
 
-class Invoice(models.db.models.Model):
-    CUSTOMER_TYPES = (
-        ('REGULAR', 'Regular'),
-        ('PREMIUM', 'Premium'),
-        ('VIP', 'VIP'),
-    )
-
+class Invoice(models.Model):
     invoice_number = models.CharField(max_length=50, unique=True)
     customer = models.ForeignKey('accounts.Account', on_delete=models.PROTECT) # Assuming accounts app and Account model exist
     customer_type = models.CharField(max_length=20, choices=CUSTOMER_TYPES)
@@ -82,7 +83,7 @@ class Invoice(models.db.models.Model):
     def __str__(self):
         return self.invoice_number
 
-class InvoiceItem(models.db.models.Model):
+class InvoiceItem(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('product.Product', on_delete=models.PROTECT)
     product_name = models.CharField(max_length=150)
@@ -98,3 +99,14 @@ class InvoiceItem(models.db.models.Model):
 
     def __str__(self):
         return f"{self.product_name} ({self.invoice.invoice_number})"
+
+class InvoiceAppliedPromotion(models.Model):
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='applied_promotions')
+    promotion = models.ForeignKey('Promotion', on_delete=models.PROTECT)
+    promotion_name = models.CharField(max_length=150, help_text="Snapshot of promotion name at purchase time")
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Discount given by this promotion")
+    priority = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.promotion_name} - {self.invoice.invoice_number}"

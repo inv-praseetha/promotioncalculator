@@ -34,12 +34,19 @@ export const apiClient = {
    * @param {Object} payload 
    */
   async calculateInvoice(payload) {
-    // Mock return to match design until invoice backend endpoint is complete
-    return {
-      subtotal: 109500,
-      promotionDiscount: 15000,
-      couponDiscount: 500,
-      finalAmount: 94000
-    };
+    const response = await fetch(`${API_BASE_URL}/invoice/calculate/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to calculate invoice');
+    }
+    
+    return await response.json();
   }
 };

@@ -5,31 +5,73 @@ import AddProducts from './components/AddProducts';
 import CouponSection from './components/CouponSection';
 import BillSummary from './components/BillSummary';
 import AdditionalInfo from './components/AdditionalInfo';
+import { apiClient } from './api/client';
 
 function App() {
   const [customer, setCustomer] = useState({});
   const [availableProducts, setAvailableProducts] = useState([]);
   const [products, setProducts] = useState([]);
   const [couponCode, setCouponCode] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const subtotal = 0;
-  const promotionDiscount = 0;
-  const couponDiscount = 0;
-  const totalDiscount = 0;
-  const finalAmount = 0;
+  const [subtotal, setSubtotal] = useState(0);
+  const [promotionDiscount, setPromotionDiscount] = useState(0);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [totalDiscount, setTotalDiscount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+
+  const handleCalculate = async () => {
+    setErrorMsg('');
+    if (!customer.id || products.length === 0) return;
+    try {
+      const payload = {
+        customer_id: customer.id,
+        items: products.map(p => ({ product_id: p.id, quantity: p.quantity })),
+        coupon_code: couponCode || null
+      };
+      const result = await apiClient.calculateInvoice(payload);
+      setSubtotal(result.subtotal);
+      setPromotionDiscount(result.promotion_discount);
+      setCouponDiscount(result.coupon_discount);
+      setTotalDiscount(result.total_discount);
+      setFinalAmount(result.final_amount);
+      
+      // Update cart with the calculated item-level discounts
+      setProducts(result.items.map(item => {
+        const prod = products.find(p => p.id === item.product_id);
+        return {
+          ...prod,
+          subtotal: item.subtotal,
+          promotionDiscount: item.promotion_discount,
+          couponDiscount: item.coupon_discount,
+          get_quantity: item.get_quantity,
+          promotionType: item.promotion_type,
+          couponName: item.coupon_name
+        };
+      }));
+    } catch (error) {
+      console.error("Failed to calculate", error);
+      setErrorMsg(error.message);
+    }
+  };
 
   return (
-    <div className="">
+    <div className="app-shell">
       <Header />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+      <div className="app-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <CustomerDetails customer={customer} setCustomer={setCustomer} setAvailableProducts={setAvailableProducts} />
           <AddProducts products={products} setProducts={setProducts} availableProducts={availableProducts} />
-          <CouponSection couponCode={couponCode} setCouponCode={setCouponCode} />
+          <CouponSection couponCode={couponCode} setCouponCode={setCouponCode} handleCalculate={handleCalculate} />
         </div>
 
         <div className="flex flex-col gap-6">
+          {errorMsg && (
+            <div className="bg-red-100 text-red-700 p-3 rounded text-sm font-medium border border-red-200">
+              {errorMsg}
+            </div>
+          )}
           <BillSummary
             customer={customer}
             products={products}
@@ -38,6 +80,7 @@ function App() {
             couponDiscount={couponDiscount}
             totalDiscount={totalDiscount}
             finalAmount={finalAmount}
+            handleCalculate={handleCalculate}
           />
           <AdditionalInfo />
         </div>

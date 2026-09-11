@@ -31,7 +31,7 @@ export default function CustomerDetails({ customer, setCustomer, setAvailablePro
   return (
     <div className="card">
       <h2 className="text-lg font-semibold mb-4">Customer Details</h2>
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
         <div className="input-group">
           <label className="input-label">Customer ID <span className="text-red-500">*</span></label>
           <div className="relative">
@@ -67,17 +67,17 @@ export default function CustomerDetails({ customer, setCustomer, setAvailablePro
         
         <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-2">
           <div className="flex">
-            <span className="w-32 text-sm text-gray-500">Name</span>
+            <span className="w-28 shrink-0 text-sm text-gray-500">Name</span>
             <span className="text-sm font-medium">: {customer.name || '-'}</span>
           </div>
           <div className="flex items-center">
-            <span className="w-32 text-sm text-gray-500">Customer Type</span>
+            <span className="w-28 shrink-0 text-sm text-gray-500">Customer Type</span>
             <span className="text-sm font-medium flex items-center gap-1">
               : {customer.type ? <span className="badge bg-brand-vip-bg text-brand-vip-text ml-1 px-2 py-0.5">{customer.type}</span> : '-'}
             </span>
           </div>
           <div className="flex items-center">
-            <span className="w-32 text-sm text-gray-500">Status</span>
+            <span className="w-28 shrink-0 text-sm text-gray-500">Status</span>
             <span className="text-sm font-medium flex items-center gap-1">
               : {customer.status ? <span className="badge bg-brand-success-bg text-brand-success-text ml-1 px-2 py-0.5">{customer.status}</span> : '-'}
             </span>

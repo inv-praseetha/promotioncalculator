@@ -16,12 +16,23 @@
 @layer base {
   body {
     @apply bg-brand-bg text-[#1f1f1f] font-sans antialiased p-6;
+    min-width: 320px;
+  }
+
+  @media (max-width: 640px) {
+    body {
+      @apply p-3;
+    }
   }
 }
 
 @layer components {
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6;
+
+    @media (max-width: 640px) {
+      @apply p-4 mb-4;
+    }
   }
   
   .input-group {
@@ -50,5 +61,11 @@
   
   .table-cell {
     @apply py-3 px-4 border-b border-gray-100 text-sm text-gray-800;
+  }
+
+  .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

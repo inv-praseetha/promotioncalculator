@@ -37,12 +37,12 @@ export default function AddProducts({ products, setProducts, availableProducts }
 
   return (
     <div className="card">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
         <h2 className="text-lg font-semibold m-0">Add Products</h2>
         {availableProducts && availableProducts.length > 0 ? (
           <select 
             onChange={handleAdd} 
-            className="input-field py-1.5 px-3 text-sm w-48 border-brand-primary"
+            className="input-field py-1.5 px-3 text-sm w-full sm:w-48 border-brand-primary"
             defaultValue=""
           >
             <option value="" disabled>+ Add Product</option>
@@ -51,13 +51,14 @@ export default function AddProducts({ products, setProducts, availableProducts }
             ))}
           </select>
         ) : (
-          <button className="btn-primary py-1.5 px-3 text-sm opacity-50 cursor-not-allowed">
+          <button className="btn-primary py-1.5 px-3 text-sm opacity-50 cursor-not-allowed w-full sm:w-auto">
             Select Customer First
           </button>
         )}
       </div>
       
-      <table className="w-full">
+      <div className="table-scroll">
+      <table className="w-full min-w-[680px]">
         <thead>
           <tr>
             <th className="table-header py-2 px-3">#</th>
@@ -103,6 +104,7 @@ export default function AddProducts({ products, setProducts, availableProducts }
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

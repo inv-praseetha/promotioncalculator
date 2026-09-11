@@ -17,6 +17,17 @@
   }
 }
 
+.app-shell {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .app-grid {
+    gap: 0;
+  }
+}
+
 .hero {
   position: relative;
 
