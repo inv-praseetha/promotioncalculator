@@ -19,19 +19,19 @@ function App() {
   const finalAmount = 0;
 
   return (
-    <div className="max-w-[1200px] mx-auto">
+    <div className="">
       <Header />
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
           <CustomerDetails customer={customer} setCustomer={setCustomer} setAvailableProducts={setAvailableProducts} />
           <AddProducts products={products} setProducts={setProducts} availableProducts={availableProducts} />
           <CouponSection couponCode={couponCode} setCouponCode={setCouponCode} />
         </div>
-        
+
         <div className="flex flex-col gap-6">
-          <BillSummary 
-            customer={customer} 
+          <BillSummary
+            customer={customer}
             products={products}
             subtotal={subtotal}
             promotionDiscount={promotionDiscount}
