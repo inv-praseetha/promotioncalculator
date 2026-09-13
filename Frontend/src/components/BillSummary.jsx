@@ -1,3 +1,7 @@
+import { useRef } from 'react';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
+
 export default function BillSummary({
   customer,
   products,
@@ -7,12 +11,57 @@ export default function BillSummary({
   totalDiscount,
   finalAmount,
   handleCalculate,
+  handleCreateInvoice,
+  isCalculated,
+  invoiceNumber,
+  handleClearCart
 }) {
+  const printRef = useRef();
+
+  const handlePrint = async () => {
+    if (!printRef.current) return;
+    try {
+      const dataUrl = await toPng(printRef.current, { cacheBust: true, pixelRatio: 2 });
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+
+      // We need image dimensions to calculate height proportionally
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      const pdfHeight = (img.height * pdfWidth) / img.width;
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Invoice_${invoiceNumber || 'Bill'}.pdf`);
+
+      if (handleClearCart) {
+        handleClearCart();
+      }
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+      alert("Failed to generate PDF: " + (err.message || err.toString()));
+    }
+  };
+
   return (
-    <div className="card h-fit lg:sticky lg:top-6">
+    <div className="card h-fit lg:sticky lg:top-6" ref={printRef}>
       <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
-        <h2 className="text-xl font-bold m-0">Bill Summary</h2>
-        <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50">
+        <div>
+          <h2 className="text-xl font-bold m-0">Bill Summary</h2>
+          {invoiceNumber && (
+            <p className="text-sm font-medium text-gray-500 mt-1">Invoice: {invoiceNumber}</p>
+          )}
+        </div>
+        <button
+          onClick={invoiceNumber ? handlePrint : null}
+          className={`flex items-center gap-2 px-3 py-1.5 border rounded text-sm font-medium transition-colors ${invoiceNumber
+              ? 'border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white'
+              : 'border-gray-300 text-gray-400 cursor-not-allowed'
+            }`}
+          disabled={!invoiceNumber}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4"
@@ -148,73 +197,32 @@ export default function BillSummary({
               <div className="font-semibold text-sm text-gray-900">
                 Promotion Discount
               </div>
-              <div className="text-xs text-gray-600 mt-1">
-                VIP - Electronics - 15%
-              </div>
+
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-brand-success-text">
               - ₹ {promotionDiscount.toLocaleString()}
             </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-brand-success-text"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+
           </div>
         </div>
 
         <div className="bg-brand-coupon-bg border border-blue-200 rounded p-3 flex justify-between items-center">
           <div className="flex gap-3">
             <div className="mt-0.5 text-brand-coupon-text">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-                />
-              </svg>
+
             </div>
             <div>
               <div className="font-semibold text-sm text-gray-900">
                 Coupon Discount
               </div>
-              <div className="text-xs text-gray-600 mt-1">SAVE500</div>
+
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-gray-900">- ₹ {couponDiscount ? couponDiscount.toLocaleString() : 0}</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-brand-coupon-text"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+
           </div>
         </div>
       </div>
@@ -231,6 +239,28 @@ export default function BillSummary({
         <span className="font-bold text-2xl text-gray-900">
           ₹ {finalAmount.toLocaleString()}
         </span>
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        {invoiceNumber ? (
+          <button
+            onClick={handlePrint}
+            className="font-bold py-2 px-8 rounded shadow transition-colors bg-green-600 hover:bg-green-700 text-white"
+          >
+            Print & Clear
+          </button>
+        ) : (
+          <button
+            onClick={handleCreateInvoice}
+            disabled={products.length === 0 || !isCalculated}
+            className={`font-bold py-2 px-8 rounded shadow transition-colors ${products.length === 0 || !isCalculated
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-brand-primary hover:bg-brand-secondary text-white'
+              }`}
+          >
+            Bill / Okay
+          </button>
+        )}
       </div>
     </div>
   );

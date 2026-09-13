@@ -13,6 +13,10 @@ function App() {
   const [products, setProducts] = useState([]);
   const [couponCode, setCouponCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isCalculated, setIsCalculated] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState(null);
+  const [appliedPromotions, setAppliedPromotions] = useState([]);
+  const [notAppliedPromotions, setNotAppliedPromotions] = useState([]);
 
   const [subtotal, setSubtotal] = useState(0);
   const [promotionDiscount, setPromotionDiscount] = useState(0);
@@ -49,10 +53,69 @@ function App() {
           couponName: item.coupon_name
         };
       }));
+      setAppliedPromotions(result.applied_promotions || []);
+      setNotAppliedPromotions(result.not_applied_promotions || []);
+      setIsCalculated(true);
     } catch (error) {
       console.error("Failed to calculate", error);
       setErrorMsg(error.message);
     }
+  };
+
+  const handleCreateInvoice = async () => {
+    setErrorMsg('');
+    if (!customer.id || products.length === 0 || !isCalculated) return;
+    try {
+      const payload = {
+        customer_id: customer.id,
+        items: products.map(p => ({ product_id: p.id, quantity: p.quantity })),
+      };
+      const result = await apiClient.createInvoice(payload);
+      setInvoiceNumber(result.invoice_number);
+    } catch (error) {
+      console.error("Failed to create invoice", error);
+      setErrorMsg(error.message);
+    }
+  };
+
+  const handleClearCart = () => {
+    setProducts([]);
+    setSubtotal(0);
+    setPromotionDiscount(0);
+    setCouponDiscount(0);
+    setTotalDiscount(0);
+    setFinalAmount(0);
+    setAppliedPromotions([]);
+    setNotAppliedPromotions([]);
+    setIsCalculated(false);
+    setInvoiceNumber(null);
+  };
+
+  const handleProductsChange = (newProducts) => {
+    setProducts(newProducts);
+    setIsCalculated(false);
+  };
+
+  const handleCouponChange = (code) => {
+    setCouponCode(code);
+    setIsCalculated(false);
+  };
+
+  const handleCustomerChange = (cust) => {
+    setCustomer(cust);
+    setIsCalculated(false);
+    
+    // Clear cart and calculation data when customer changes
+    setProducts([]);
+    setSubtotal(0);
+    setPromotionDiscount(0);
+    setCouponDiscount(0);
+    setTotalDiscount(0);
+    setFinalAmount(0);
+    setAppliedPromotions([]);
+    setNotAppliedPromotions([]);
+    setInvoiceNumber(null);
+    setErrorMsg('');
   };
 
   return (
@@ -61,9 +124,9 @@ function App() {
 
       <div className="app-grid grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div className="flex flex-col gap-6">
-          <CustomerDetails customer={customer} setCustomer={setCustomer} setAvailableProducts={setAvailableProducts} />
-          <AddProducts products={products} setProducts={setProducts} availableProducts={availableProducts} />
-          <CouponSection couponCode={couponCode} setCouponCode={setCouponCode} handleCalculate={handleCalculate} />
+          <CustomerDetails customer={customer} setCustomer={handleCustomerChange} setAvailableProducts={setAvailableProducts} />
+          <AddProducts products={products} setProducts={handleProductsChange} availableProducts={availableProducts} />
+          <CouponSection couponCode={couponCode} setCouponCode={handleCouponChange} handleCalculate={handleCalculate} />
         </div>
 
         <div className="flex flex-col gap-6">
@@ -81,8 +144,15 @@ function App() {
             totalDiscount={totalDiscount}
             finalAmount={finalAmount}
             handleCalculate={handleCalculate}
+            handleCreateInvoice={handleCreateInvoice}
+            isCalculated={isCalculated}
+            invoiceNumber={invoiceNumber}
+            handleClearCart={handleClearCart}
           />
-          <AdditionalInfo />
+          <AdditionalInfo 
+            appliedPromotions={appliedPromotions} 
+            notAppliedPromotions={notAppliedPromotions} 
+          />
         </div>
       </div>
     </div>

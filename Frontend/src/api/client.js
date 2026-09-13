@@ -48,5 +48,26 @@ export const apiClient = {
     }
     
     return await response.json();
+  },
+
+  /**
+   * Finalizes the order and creates the invoice in the database
+   * @param {Object} payload 
+   */
+  async createInvoice(payload) {
+    const response = await fetch(`${API_BASE_URL}/invoice/create/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create invoice');
+    }
+    
+    return await response.json();
   }
 };

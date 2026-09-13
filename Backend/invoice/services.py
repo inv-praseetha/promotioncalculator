@@ -41,6 +41,7 @@ class InvoiceCalculationService:
         ).order_by('priority')
 
         total_promotion_discount = 0
+        applied_promotions_list = []
 
         for promo in promotions:
             if promo.customer_type and promo.customer_type != customer.customer_type:
@@ -48,8 +49,8 @@ class InvoiceCalculationService:
             if promo.minimum_order_amount and float(subtotal) < float(promo.minimum_order_amount):
                 continue
             
-            
             promo_discount_this_round = 0
+            promo_applied = False
             
             for item in cart_items:
                 if promo.product and item['product'].id != promo.product.id:
@@ -65,19 +66,16 @@ class InvoiceCalculationService:
                 elif promo.discount_type == 'FIXED':
                     discount = float(promo.discount_value)
                 elif promo.discount_type == 'BUY_X_GET_Y':
-
                     if promo.buy_quantity and promo.get_quantity:
                         sets = item['quantity'] // promo.buy_quantity
                         free_items = sets * promo.get_quantity
                         total_quantity = item['quantity'] + free_items
-                        print(total_quantity,"total_quantity")
-                        # Since the free items are given as extra (added to get_quantity) 
-                        # and are NOT part of the original quantity's subtotal,
-                        # we don't need to subtract any money from the subtotal.
                         if total_quantity > item['product'].count:
-                            raise  ValueError(f"insufficient stock{item[product].name}")
+                            raise ValueError(f"insufficient stock{item['product'].name}")
                         discount = 0
                         item['get_quantity'] += free_items
+                        if free_items > 0:
+                            promo_applied = True
                 
                 if promo.maximum_discount and discount > float(promo.maximum_discount):
                     discount = float(promo.maximum_discount)
@@ -85,18 +83,25 @@ class InvoiceCalculationService:
                 # Cannot discount more than the remaining price of the item
                 discount = min(discount, item['subtotal'] - item['promotion_discount'])
                 
+                if discount > 0:
+                    promo_applied = True
+                
                 item['promotion_discount'] += float(discount)
                 promo_discount_this_round += float(discount)
-                
-            
-                
 
-            
             total_promotion_discount += promo_discount_this_round
             
+            if promo_applied:
+                applied_promotions_list.append({
+                    "id": promo.id,
+                    "name": promo.name,
+                    "discount_amount": promo_discount_this_round,
+                    "priority": promo.priority
+                })
+
+
             if not promo.is_stackable and promo_discount_this_round > 0:
                 break
-
 
         coupons = Coupon.objects.filter(is_active=True, start_date__lte=now, end_date__gte=now).order_by('priority')
 
@@ -104,7 +109,7 @@ class InvoiceCalculationService:
         applied_coupon = None
 
         for coupon in coupons:
-                if coupon.customer_type and coupon.customer_type != customer.customer_type:
+                if  coupon.customer_type != customer.customer_type:
                     continue
                 if coupon.minimum_order_amount and subtotal < float(coupon.minimum_order_amount):
                     continue
@@ -133,13 +138,23 @@ class InvoiceCalculationService:
                     )
                 total_coupon_discount = min(total_coupon_discount, subtotal - total_promotion_discount)
                 
-                if eligible_subtotal > 0:
+                if eligible_subtotal > 0 and total_coupon_discount > 0:
                     for item in eligible_items:
                         proportion = item['subtotal'] / eligible_subtotal
                         item['coupon_discount'] = float(total_coupon_discount) * proportion
+                        
+                    applied_coupon = coupon
+                    break
 
-                applied_coupon = coupon
-                break
+        applied_promo_ids = {p['id'] for p in applied_promotions_list}
+        not_applied_promotion_list = [
+            {
+                "id": promo.id,
+                "name": promo.name,
+                "priority": promo.priority
+            }
+            for promo in promotions if promo.id not in applied_promo_ids
+        ]
 
         total_discount = total_promotion_discount + total_coupon_discount
         final_amount = float(subtotal) - total_discount
@@ -147,11 +162,12 @@ class InvoiceCalculationService:
         return {
             "subtotal": round(float(subtotal), 2),
             "promotion_discount": round(total_promotion_discount, 2),
-            
             "coupon_discount": round(total_coupon_discount, 2),
             "coupon": applied_coupon.code if applied_coupon else None,
             "total_discount": round(total_discount, 2),
             "final_amount": round(max(0, final_amount), 2),
+            "applied_promotions": applied_promotions_list,
+            "not_applied_promotions": not_applied_promotion_list,
             "items": [
                 {
                     "product_id": item['product'].id,
@@ -166,4 +182,82 @@ class InvoiceCalculationService:
                     "promotion_discount": round(item['promotion_discount'], 2)
                 } for item in cart_items
             ]
+        }
+
+    @staticmethod
+    def create_invoice(customer_id, items_data):
+        from django.db import transaction
+        from .models import Invoice, InvoiceItem, InvoiceAppliedPromotion
+        import uuid
+        
+        customer = Account.objects.filter(customer_id=customer_id).first()
+        if not customer:
+            raise ValueError("Customer not found")
+
+        result = InvoiceCalculationService.calculate(customer_id, items_data)
+        
+        with transaction.atomic():
+            invoice_number = f"INV-{uuid.uuid4().hex[:8].lower()}"
+            
+            coupon_obj = None
+            if result.get("coupon"):
+                coupon_obj = Coupon.objects.filter(code=result["coupon"]).first()
+            
+            invoice = Invoice.objects.create(
+                invoice_number=invoice_number,
+                customer=customer,
+                customer_type=customer.customer_type,
+                subtotal=result["subtotal"],
+                promotion_discount=result["promotion_discount"],
+                coupon_discount=result["coupon_discount"],
+                total_discount=result["total_discount"],
+                final_amount=result["final_amount"],
+                coupon=coupon_obj
+            )
+            
+            for item in result["items"]:
+                product = Product.objects.filter(id=item["product_id"]).first()
+                if not product:
+                    raise ValueError(f"Product {item['product_name']} not found")
+                
+                total_qty_to_deduct = item["quantity"] + item["get_quantity"]
+                if product.count < total_qty_to_deduct:
+                    raise ValueError(f"Insufficient stock for {product.name}")
+                
+                product.count -= total_qty_to_deduct
+                product.save()
+                
+                InvoiceItem.objects.create(
+                    invoice=invoice,
+                    product=product,
+                    product_name=item["product_name"],
+                    category_name=product.category.name if product.category else "Uncategorized",
+                    quantity=item["quantity"],
+                    unit_price=item["unit_price"],
+                    subtotal=item["subtotal"],
+                    promotion_discount=item["promotion_discount"],
+                    coupon_discount=item["coupon_discount"],
+                    final_amount=round(item["subtotal"] - item["promotion_discount"] - item["coupon_discount"], 2),
+                    get_quantity=item["get_quantity"]
+                )
+                
+            for promo_data in result.get("applied_promotions", []):
+                promo = Promotion.objects.filter(id=promo_data["id"]).first()
+                if promo:
+                    InvoiceAppliedPromotion.objects.create(
+                        invoice=invoice,
+                        promotion=promo,
+                        promotion_name=promo_data["name"],
+                        discount_amount=promo_data["discount_amount"],
+                        priority=promo_data["priority"]
+                    )
+            
+            if coupon_obj:
+                coupon_obj.used_count += 1
+                coupon_obj.save()
+                
+        return {
+            "message": "Invoice created successfully",
+            "invoice_number": invoice_number,
+            "final_amount": invoice.final_amount
         }

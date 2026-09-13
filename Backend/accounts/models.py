@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.core.validators import RegexValidator
 # Create your models here.
 class Account(models.Model):
 
@@ -7,6 +7,7 @@ class Account(models.Model):
         VIP = "VIP", "VIP"
         REGULAR = "REGULAR", "Regular"
         PREMIUM = "PREMIUM", "Premium"
+    customer_id_validator=RegexValidator(regex=r'^CUS-\d+$',message='Customer ID must be start with CUS')
 
     customer_id = models.CharField(
         max_length=25,
