@@ -109,7 +109,7 @@ class InvoiceCalculationService:
         applied_coupon = None
 
         for coupon in coupons:
-                if  coupon.customer_type != customer.customer_type:
+                if coupon.customer_type and coupon.customer_type != customer.customer_type:
                     continue
                 if coupon.minimum_order_amount and subtotal < float(coupon.minimum_order_amount):
                     continue
