@@ -118,9 +118,10 @@ class InvoiceCalculationService:
 
                 eligible_items = [
                     item for item in cart_items
-                    if (not coupon.product or item['product'].id == coupon.product_id)
-                    or (not coupon.category or item['product'].category_id == coupon.category_id)
-                    or (not coupon.minimum_quantity or item['quantity'] >= coupon.minimum_quantity)
+                    if (not coupon.product and not coupon.category and not coupon.minimum_quantity)
+                    or (coupon.product and item['product'].id == coupon.product_id)
+                    or (coupon.category and item['product'].category_id == coupon.category_id)
+                    or (coupon.minimum_quantity and item['quantity'] >= coupon.minimum_quantity)
                 ]
                 if not eligible_items:
                     continue
@@ -201,7 +202,7 @@ class InvoiceCalculationService:
             
             coupon_obj = None
             if result.get("coupon"):
-                coupon_obj = Coupon.objects.filter(code=result["coupon"]).first()
+                coupon_obj = Coupon.objects.select_for_update().filter(code=result["coupon"]).first()
             
             invoice = Invoice.objects.create(
                 invoice_number=invoice_number,
@@ -216,7 +217,7 @@ class InvoiceCalculationService:
             )
             
             for item in result["items"]:
-                product = Product.objects.filter(id=item["product_id"]).first()
+                product = Product.objects.select_for_update().filter(id=item["product_id"]).first()
                 if not product:
                     raise ValueError(f"Product {item['product_name']} not found")
                 
