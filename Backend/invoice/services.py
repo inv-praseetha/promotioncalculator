@@ -20,7 +20,7 @@ class InvoiceCalculationService:
                 qty = int(item.get('quantity', 1))
                 original_quanity =product.count
                 if qty>original_quanity:
-                    raise ValueError(f"insufficent stock{product.name}can you please delete this product only available")
+                    raise ValueError(f"insufficent stock {product.name}can you please delete this product only available")
                 item_subtotal = float(product.price) * qty
                 cart_items.append({
                     'product': product,
